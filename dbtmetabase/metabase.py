@@ -982,7 +982,7 @@ class MetabaseClient:
         response = self.session.request(
             method,
             f"{self.base_url}{path}",
-            timeout=15,
+            timeout=60,
             **kwargs,
         )
 
