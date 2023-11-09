@@ -31,6 +31,7 @@ class MetabaseInterface:
         cert: Optional[Union[str, Tuple[str, str]]] = None,
         sync: bool = True,
         sync_timeout: Optional[int] = None,
+        metabase_api_timeout: Optional[int] = None,
         exclude_sources: bool = False,
         http_extra_headers: Optional[dict] = None,
     ):
@@ -47,6 +48,7 @@ class MetabaseInterface:
             cert (Optional[Union[str, Tuple[str, str]]], optional): Path to a custom certificate to be used by the Metabase client, or a tuple containing the path to the certificate and key. Defaults to None.
             sync (bool, optional): Attempt to synchronize Metabase schema with local models. Defaults to True.
             sync_timeout (Optional[int], optional): Synchronization timeout (in secs). Defaults to None.
+            metabase_api_timeout (Optional[int], optional): Metabase API timeout (in secs). Defaults to 30.
             exclude_sources (bool, optional): Exclude exporting sources. Defaults to False.
             http_extra_headers (Optional[dict], optional): HTTP headers to be used by the Metabase client. Defaults to None.
         """
@@ -61,6 +63,7 @@ class MetabaseInterface:
         self.use_http = use_http
         self.verify = verify
         self.cert = cert
+        self.metabase_api_timeout = metabase_api_timeout
         self.http_extra_headers = dict(http_extra_headers) if http_extra_headers else {}
         # Metabase Sync
         self.sync = sync
@@ -87,6 +90,7 @@ class MetabaseInterface:
 
         if self._client is not None:
             # Already prepared
+            print("Already prepared MetabaseClient")
             return
 
         if dbt_models is None:
@@ -108,6 +112,7 @@ class MetabaseInterface:
             session_id=self.session_id,
             sync=self.sync,
             sync_timeout=self.sync_timeout,
+            metabase_api_timeout=self.metabase_api_timeout,
             exclude_sources=self.exclude_sources,
         )
 

@@ -126,6 +126,7 @@ class MetabaseClient:
         use_http: bool = False,
         sync: Optional[bool] = True,
         sync_timeout: Optional[int] = None,
+        metabase_api_timeout: Optional[int] = None,
         exclude_sources: bool = False,
         http_extra_headers: Optional[dict] = None,
     ):
@@ -143,12 +144,18 @@ class MetabaseClient:
             session_id {str} -- Metabase session ID. (default: {None})
             sync (bool, optional): Attempt to synchronize Metabase schema with local models. Defaults to True.
             sync_timeout (Optional[int], optional): Synchronization timeout (in secs). Defaults to None.
+            metabase_api_timeout (Optional[int], optional): The Metabase API timeout (in secs). Defaults to 30.
             http_extra_headers {dict} -- HTTP headers to be used by the Metabase client. (default: {None})
             exclude_sources {bool} -- Exclude exporting sources. (default: {False})
         """
         self.base_url = f"{'http' if use_http else 'https'}://{host}"
+        self.metabase_api_timeout = metabase_api_timeout
         self.session = requests.Session()
-        self.session.verify = verify
+        # Set verify to True in order to use the default certificate authorities for SSL certificate verification when a custom certificate is not provided. 
+        if verify is None:
+            self.session.verify = False
+        else:
+            self.session.verify = verify
         self.session.cert = cert
         if http_extra_headers is not None:
             self.session.headers.update(http_extra_headers)
@@ -982,7 +989,7 @@ class MetabaseClient:
         response = self.session.request(
             method,
             f"{self.base_url}{path}",
-            timeout=60,
+            timeout=self.metabase_api_timeout if self.metabase_api_timeout else 30,
             **kwargs,
         )
 

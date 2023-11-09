@@ -149,6 +149,21 @@ class CommandController(click.Command):
         click.formatting.wrap_text = wrap_text
         return super().get_help(ctx)
 
+class VerifyOption(click.Option):
+    """This class inherets from click.Option and helps handling the Verify Option to accept either a file path or true or false.
+    """
+    def type_cast_value(self, ctx, value):
+        if value is None:
+            return None
+        elif value.lower() == 'true':
+            return True
+        elif value.lower() == 'false':
+            return False
+        elif os.path.exists(value):
+            return value
+        else:
+            self.fail(f"File {value} does not exist.", ctx)
+            
 
 def shared_opts(func: Callable) -> Callable:
     """Here we define the options shared across subcommands
@@ -266,7 +281,7 @@ def shared_opts(func: Callable) -> Callable:
     @click.option(
         "--metabase_verify",
         metavar="CERT",
-        type=click.Path(exists=True, file_okay=True, dir_okay=False),
+        cls=VerifyOption,
         help="Path to certificate bundle used by Metabase client",
     )
     @click.option(
@@ -281,6 +296,12 @@ def shared_opts(func: Callable) -> Callable:
         metavar="SECS",
         type=int,
         help="Synchronization timeout (in secs). If set, we will fail hard on synchronization failure; if not set, we will proceed after attempting sync regardless of success. Only valid if sync is enabled",
+    )
+    @click.option(
+        "--metabase_api_timeout",
+        metavar="SECS",
+        type=int,
+        help="The Metabase API timeout. (in secs). Used to extend the timeout on API calls to Metabase. It defaults to 30 secs if not set.",
     )
     @click.option(
         "--http_extra_headers",
@@ -474,6 +495,13 @@ def config(ctx, inspect: bool = False, resolve: bool = False, env: bool = False)
         default=config_file.get("metabase_use_http", False),
         show_default=True,
     )
+    config_file["metabase_api_timeout"] = click.prompt(
+        "Metabase API timeout in seconds. It defaiults to 30 secs.",
+            default=config_file.get("metabase_api_timeout", None),
+            show_default=True,
+            value_proc=lambda i: None if int(i) <= 0 else int(i),
+            type=click.INT,
+    )
     if click.confirm("Would you like to set a custom certificate bundle to use?"):
         config_file["metabase_verify"] = click.prompt(
             "Path to certificate bundle used by Metabase client",
@@ -558,6 +586,7 @@ def models(
     metabase_verify: Optional[str] = None,
     metabase_sync: bool = True,
     metabase_sync_timeout: Optional[int] = None,
+    metabase_api_timeout: Optional[int] = None,
     metabase_exclude_sources: bool = False,
     dbt_include_tags: bool = True,
     dbt_docs_url: Optional[str] = None,
@@ -584,6 +613,7 @@ def models(
         metabase_verify (Optional[str], optional): Path to custom certificate bundle to be used by Metabase client. Defaults to None.
         metabase_sync (bool, optional): Attempt to synchronize Metabase schema with local models. Defaults to True.
         metabase_sync_timeout (Optional[int], optional): Synchronization timeout (in secs). If set, we will fail hard on synchronization failure; if not set, we will proceed after attempting sync regardless of success. Only valid if sync is enabled. Defaults to None.
+        metabase_api_timeout (Optional[int], optional): An optional timeout for the Metabase API. Defaults to 30 secs.
         metabase_exclude_sources (bool, optional): Flag to skip exporting sources to Metabase. Defaults to False.
         dbt_include_tags (bool, optional): Flag to append tags to table descriptions in Metabase. Defaults to True.
         dbt_docs_url (Optional[str], optional): Pass in URL to dbt docs site. Appends dbt docs URL for each model to Metabase table description. Defaults to None.
@@ -623,6 +653,7 @@ def models(
         database=metabase_database,
         sync=metabase_sync,
         sync_timeout=metabase_sync_timeout,
+        metabase_api_timeout=metabase_api_timeout,
         exclude_sources=metabase_exclude_sources,
         http_extra_headers=http_extra_headers,
     )
@@ -685,6 +716,7 @@ def exposures(
     metabase_verify: Optional[str] = None,
     metabase_sync: bool = True,
     metabase_sync_timeout: Optional[int] = None,
+    metabase_api_timeout: Optional[int] = None,
     output_path: str = ".",
     output_name: str = "metabase_exposures.yml",
     include_personal_collections: bool = False,
@@ -711,6 +743,7 @@ def exposures(
         metabase_verify (Optional[str], optional): Path to custom certificate bundle to be used by Metabase client. Defaults to None.
         metabase_sync (bool, optional): Attempt to synchronize Metabase schema with local models. Defaults to True.
         metabase_sync_timeout (Optional[int], optional): Synchronization timeout (in secs). If set, we will fail hard on synchronization failure; if not set, we will proceed after attempting sync regardless of success. Only valid if sync is enabled. Defaults to None.
+        metabase_api_timeout (Optional[int], optional): An optional timeout for the Metabase API. Defaults to 30 secs.
         output_path (str): Output path for generated exposure yaml. Defaults to "." local dir.
         output_name (str): Output name for generated exposure yaml. Defaults to metabase_exposures.yml.
         include_personal_collections (bool, optional): Flag to include Personal Collections during exposure parsing. Defaults to False.
@@ -748,6 +781,7 @@ def exposures(
         database=metabase_database,
         sync=metabase_sync,
         sync_timeout=metabase_sync_timeout,
+        metabase_api_timeout=metabase_api_timeout,
         http_extra_headers=http_extra_headers,
     )
 
